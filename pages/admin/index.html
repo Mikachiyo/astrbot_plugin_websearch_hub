@@ -72,6 +72,13 @@
   .test-result { font-size: 12px; margin-left: 8px; }
   .test-result.ok { color: var(--ok); }
   .test-result.fail { color: var(--danger); }
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 98; display: flex;
+                   align-items: center; justify-content: center; }
+  .modal-box { background: #fff; border-radius: var(--radius); padding: 20px; width: 320px; max-width: 90%;
+               box-shadow: 0 10px 30px rgba(0,0,0,.15); text-align: left; }
+  .modal-box h3 { margin: 0 0 10px; font-size: 16px; }
+  .modal-box p { margin: 0 0 20px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+  .modal-btns { display: flex; justify-content: flex-end; gap: 10px; }
 </style>
 </head>
 <body>
@@ -100,6 +107,7 @@
   </div>
 
   <div id="toast"></div>
+  <div id="modalWrap"></div>
 
 <script>
 const PLUGIN = 'astrbot_plugin_websearch_hub';
@@ -315,8 +323,35 @@ function move(i, d) {
   render();
 }
 function del(i) {
-  if (!confirm(`删除搜索源「${providers[i].name}」？`)) return;
-  providers.splice(i, 1); render();
+  const name = providers[i]?.name || '此搜索源';
+  const wrap = document.getElementById('modalWrap');
+  wrap.innerHTML = `
+    <div class="modal-overlay" onclick="closeModal()">
+      <div class="modal-box" onclick="event.stopPropagation()">
+        <h3>确认删除</h3>
+        <p>确定要删除搜索源「${esc(name)}」吗？删除后记得点击「保存配置」生效。</p>
+        <div class="modal-btns">
+          <button class="btn" onclick="closeModal()">取消</button>
+          <button class="btn danger" style="background:var(--danger);color:#fff;border-color:var(--danger);" onclick="confirmDel(${i})">删除</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function closeModal() {
+  document.getElementById('modalWrap').innerHTML = '';
+}
+
+function confirmDel(i) {
+  closeModal();
+  providers.splice(i, 1);
+  const newExp = {};
+  providers.forEach((_, idx) => {
+    newExp[idx] = expanded[idx >= i ? idx + 1 : idx];
+  });
+  expanded = newExp;
+  render();
+  toast('已移除搜索源（未保存）');
 }
 
 async function testEntry(i) {
