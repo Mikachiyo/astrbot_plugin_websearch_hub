@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>聚合搜索中心</title>
+<style>
+  :root {
+    --bg: #f5f6fa; --card: #ffffff; --border: #e3e6ee; --text: #2b3245;
+    --muted: #8a91a6; --primary: #4c6fff; --primary-soft: #eef1ff;
+    --danger: #e5534b; --ok: #2da44e; --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 24px; background: var(--bg); color: var(--text);
+         font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; font-size: 14px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin-bottom: 20px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+          margin-bottom: 14px; overflow: hidden; }
+  .card-head { display: flex; align-items: center; gap: 10px; padding: 12px 16px;
+               cursor: pointer; user-select: none; }
+  .card-head:hover { background: #fafbfe; }
+  .card-head .title { font-weight: 600; }
+  .card-head .badge { font-size: 12px; color: var(--primary); background: var(--primary-soft);
+                      padding: 2px 8px; border-radius: 10px; }
+  .card-head .badge.off { color: var(--muted); background: #f0f1f5; }
+  .card-head .spacer { flex: 1; }
+  .card-body { padding: 4px 16px 16px; border-top: 1px solid var(--border); }
+  .row { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px dashed #eef0f5; }
+  .row:last-child { border-bottom: none; }
+  .row .label { width: 220px; flex-shrink: 0; }
+  .row .label .hint { display: block; font-size: 12px; color: var(--muted); font-weight: normal; margin-top: 2px; }
+  .row .field { flex: 1; }
+  input[type=text], input[type=number], select, textarea {
+    width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px;
+    font-size: 13px; font-family: inherit; background: #fff; color: var(--text); }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary); }
+  textarea { resize: vertical; min-height: 60px; font-family: ui-monospace, monospace; }
+  .btn { padding: 7px 14px; border-radius: 8px; border: 1px solid var(--border); background: #fff;
+         cursor: pointer; font-size: 13px; color: var(--text); }
+  .btn:hover { border-color: var(--primary); color: var(--primary); }
+  .btn.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .btn.primary:hover { opacity: .9; }
+  .btn.icon { padding: 5px 9px; line-height: 1; }
+  .btn.danger:hover { border-color: var(--danger); color: var(--danger); }
+  .switch { position: relative; width: 40px; height: 22px; }
+  .switch input { display: none; }
+  .switch .sl { position: absolute; inset: 0; background: #d5d9e3; border-radius: 22px; transition: .2s; }
+  .switch .sl:before { content: ""; position: absolute; width: 18px; height: 18px; left: 2px; top: 2px;
+                       background: #fff; border-radius: 50%; transition: .2s; }
+  .switch input:checked + .sl { background: var(--primary); }
+  .switch input:checked + .sl:before { transform: translateX(18px); }
+  details.more { margin-top: 10px; border: 1px solid var(--border); border-radius: 8px; background: #fafbfe; }
+  details.more > summary { padding: 10px 14px; cursor: pointer; font-weight: 600; user-select: none; }
+  details.more > summary:hover { color: var(--primary); }
+  details.more .more-body { padding: 0 14px 8px; }
+  .toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
+  .add-wrap { position: relative; display: inline-block; }
+  .add-menu { position: absolute; top: 110%; left: 0; z-index: 20; background: #fff; min-width: 300px;
+              border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.1);
+              display: none; overflow: hidden; }
+  .add-menu.open { display: block; }
+  .add-menu .opt { padding: 10px 14px; cursor: pointer; }
+  .add-menu .opt:hover { background: var(--primary-soft); }
+  .add-menu .opt .d { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  #toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+           background: #323a4d; color: #fff; padding: 10px 20px; border-radius: 8px;
+           opacity: 0; transition: .3s; pointer-events: none; z-index: 99; max-width: 80%; }
+  #toast.show { opacity: 1; }
+  #toast.err { background: var(--danger); }
+  .global { padding: 16px; }
+  .test-result { font-size: 12px; margin-left: 8px; }
+  .test-result.ok { color: var(--ok); }
+  .test-result.fail { color: var(--danger); }
+</style>
+</head>
+<body>
+  <h1>🔎 聚合搜索中心</h1>
+  <div class="sub">列表顺序即搜索优先级：第一个源失败后自动轮询下一个。修改后记得点「保存配置」。</div>
+
+  <div class="toolbar">
+    <div class="add-wrap">
+      <button class="btn primary" id="addBtn">＋ 添加搜索服务</button>
+      <div class="add-menu" id="addMenu"></div>
+    </div>
+    <button class="btn primary" id="saveBtn">💾 保存配置</button>
+  </div>
+
+  <div id="list"></div>
+
+  <div class="card global">
+    <div class="row">
+      <div class="label">Key 失败冷却时间（秒）</div>
+      <div class="field"><input type="number" id="gCooldown" min="0"></div>
+    </div>
+    <div class="row">
+      <div class="label">网页抓取最大字符数<span class="hint">fetch_web_page 返回正文的最大长度，0 = 不截断</span></div>
+      <div class="field"><input type="number" id="gFetchMax" min="0"></div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+<script>
+const PLUGIN = 'astrbot_plugin_websearch_hub';
+
+const TEMPLATES = {
+  gemini_search: {
+    label: 'Gemini 谷歌原生搜索', desc: 'Google generateContent + google_search grounding',
+    entry: { name: 'gemini', protocol: 'auto', base_url: 'https://generativelanguage.googleapis.com', model: 'gemini-2.5-flash' }
+  },
+  grok_search: {
+    label: 'Grok 原生搜索', desc: 'xAI chat/completions 的 search_parameters 实时搜索',
+    entry: { name: 'grok', protocol: 'auto', base_url: 'https://api.x.ai/v1', model: 'grok-4-fast' }
+  },
+  openai_search: {
+    label: 'GPT 原生搜索（Responses API）', desc: 'OpenAI Responses API 的 web_search，也适用于 Responses 格式的中转站',
+    entry: { name: 'gpt', protocol: 'auto', base_url: 'https://api.openai.com/v1', model: 'gpt-5-mini' }
+  },
+  tavily_search: {
+    label: 'Tavily 搜索', desc: 'Tavily Search API',
+    entry: { name: 'tavily', protocol: 'auto', base_url: 'https://api.tavily.com', model: '' }
+  },
+  custom_search: {
+    label: '自定义搜索引擎', desc: '完全自定义：自选协议、自填地址/模型/Key',
+    entry: { name: 'custom', protocol: 'openai_responses', base_url: '', model: '' }
+  },
+  astrbot_search: {
+    label: 'AstrBot 已配置的模型提供商', desc: '使用 AstrBot 里已配置的对话模型提供商做搜索，地址/Key/模型自动继承',
+    entry: { name: 'astrbot', protocol: 'auto', base_url: '', model: '' }
+  },
+  astrbot_native_search: {
+    label: 'AstrBot 原生网页搜索服务', desc: '使用 AstrBot 主配置里的网页搜索（Tavily/博查/Brave/Firecrawl/百度），零配置',
+    entry: { name: 'astrbot-native', protocol: 'astrbot_native', base_url: '', model: '' }
+  },
+};
+
+const PROTOCOLS = [
+  ['auto', 'auto（自动推断）'],
+  ['openai_responses', 'openai_responses（Responses API web_search，多数中转用这种）'],
+  ['openai_chat_search', 'openai_chat_search（chat/completions + search_parameters，xAI 风格）'],
+  ['gemini_native', 'gemini_native（Google generateContent）'],
+  ['tavily', 'tavily（Tavily API）'],
+  ['astrbot_native', 'astrbot_native（AstrBot 主配置里的网页搜索服务）'],
+];
+
+let providers = [];
+let astrProviders = [];
+let nativeInfo = null;
+let expanded = {};
+
+// ---------- API ----------
+let bridge = null;
+async function initBridge() {
+  // dashboard 会把 bridge-sdk.js 注入到本页面（在我们的内联脚本之后），
+  // 暴露 window.AstrBotPluginPage，这里轮询等待它就绪
+  for (let i = 0; i < 50; i++) {
+    const b = window.AstrBotPluginPage;
+    if (b && typeof b.ready === 'function') {
+      try {
+        await b.ready();
+        bridge = b;
+        return;
+      } catch (e) {
+        console.warn('Bridge ready() failed:', e);
+        break;
+      }
+    }
+    await new Promise(r => setTimeout(r, 100));
+  }
+  console.warn('AstrBotPluginPage bridge 未就绪，回退到直接 fetch');
+  bridge = null;
+}
+async function reqApi(action, endpoint, body) {
+  if (bridge) {
+    // bridge 会自动拼 /api/v1/plugins/extensions/<plugin>/<endpoint>
+    return action === 'GET'
+      ? await bridge.apiGet(endpoint, body)
+      : await bridge.apiPost(endpoint, body);
+  }
+  const res = await fetch(`/api/plug/${PLUGIN}/${endpoint}`, {
+    method: action,
+    headers: { 'Content-Type': 'application/json' },
+    body: body && action === 'POST' ? JSON.stringify(body) : undefined
+  });
+  return await res.json();
+}
+
+function toast(msg, isErr) {
+  const el = document.getElementById('toast');
+  el.innerText = msg;
+  el.className = 'show' + (isErr ? ' err' : '');
+  setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// ---------- 渲染 ----------
+function esc(s) { return String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+function render() {
+  const list = document.getElementById('list');
+  if (!providers.length) {
+    list.innerHTML = '<div class="card global" style="color:var(--muted)">还没有搜索服务，点左上角「添加搜索服务」。</div>';
+    return;
+  }
+  list.innerHTML = providers.map((p, i) => {
+    const open = expanded[i] !== false;
+    const tplLabel = (TEMPLATES[p.__template_key] || {}).label || p.__template_key || 'custom';
+    const isNative = p.__template_key === 'astrbot_native_search';
+    const astrOpts = ['<option value="">（不使用，手动填写）</option>']
+      .concat(astrProviders.map(ap =>
+        `<option value="${esc(ap.id)}" ${p.astr_provider_id === ap.id ? 'selected' : ''}>${esc(ap.id)}（${esc(ap.type)} / ${esc(ap.model)}）</option>`))
+      .join('');
+    const protoOpts = PROTOCOLS.map(([v, l]) =>
+      `<option value="${v}" ${p.protocol === v ? 'selected' : ''}>${l}</option>`).join('');
+    const nativeRow = isNative ? `
+        <div class="row">
+          <div class="label">当前检测到的服务</div>
+          <div class="field">${
+            nativeInfo === null ? '<span style="color:var(--muted)">读取中…</span>'
+            : nativeInfo.configured
+              ? `<span style="color:var(--ok)">✅ ${esc(nativeInfo.provider)}（${nativeInfo.key_count} 个 Key，自动跟随 AstrBot 主配置）</span>`
+              : `<span style="color:var(--danger)">⚠️ AstrBot 主配置里的网页搜索服务为 ${esc(nativeInfo.provider || '?')}，但未配置 Key，请先在 AstrBot「配置 → 提供商」里填写</span>`
+          }</div>
+        </div>` : '';
+    const astrRow = isNative ? '' : `
+        <div class="row">
+          <div class="label">从 AstrBot 提供商选择<span class="hint">选择后自动继承其地址 / Key / 模型，下方对应手填项失效</span></div>
+          <div class="field"><select onchange="set(${i},'astr_provider_id',this.value)">${astrOpts}</select></div>
+        </div>`;
+    const moreSection = isNative ? `
+        <details class="more">
+          <summary>⚙️ 更多选项（超时 / 条数）</summary>
+          <div class="more-body">
+            <div class="row">
+              <div class="label">超时（秒）</div>
+              <div class="field"><input type="number" min="1" value="${p.timeout ?? 60}" onchange="set(${i},'timeout',parseInt(this.value)||60)"></div>
+            </div>
+            <div class="row">
+              <div class="label">最大结果数<span class="hint">0 = 不限制</span></div>
+              <div class="field"><input type="number" min="0" value="${p.max_results ?? 0}" onchange="set(${i},'max_results',parseInt(this.value)||0)"></div>
+            </div>
+          </div>
+        </details>` : `
+        <details class="more">
+          <summary>⚙️ 更多选项（协议 / 地址 / 模型 / Key / 超时 / 条数）</summary>
+          <div class="more-body">
+            <div class="row">
+              <div class="label">请求协议<span class="hint">auto=按 AstrBot 提供商类型或模板预设推断</span></div>
+              <div class="field"><select onchange="set(${i},'protocol',this.value)">${protoOpts}</select></div>
+            </div>
+            <div class="row">
+              <div class="label">API 地址<span class="hint">可填中转地址</span></div>
+              <div class="field"><input type="text" value="${esc(p.base_url)}" onchange="set(${i},'base_url',this.value)"></div>
+            </div>
+            <div class="row">
+              <div class="label">模型</div>
+              <div class="field"><input type="text" value="${esc(p.model)}" onchange="set(${i},'model',this.value)"></div>
+            </div>
+            <div class="row">
+              <div class="label">API Key 列表<span class="hint">每行一个，轮询使用</span></div>
+              <div class="field"><textarea onchange="set(${i},'api_keys',this.value.split('\\n').map(s=>s.trim()).filter(Boolean))">${esc((p.api_keys||[]).join('\n'))}</textarea></div>
+            </div>
+            <div class="row">
+              <div class="label">超时（秒）</div>
+              <div class="field"><input type="number" min="1" value="${p.timeout ?? 60}" onchange="set(${i},'timeout',parseInt(this.value)||60)"></div>
+            </div>
+            <div class="row">
+              <div class="label">最大结果数<span class="hint">0 = 不限制</span></div>
+              <div class="field"><input type="number" min="0" value="${p.max_results ?? 0}" onchange="set(${i},'max_results',parseInt(this.value)||0)"></div>
+            </div>
+          </div>
+        </details>`;
+    return `
+    <div class="card">
+      <div class="card-head" onclick="toggle(${i})">
+        <span>${open ? '▾' : '▸'}</span>
+        <span class="title">${esc(p.name)}</span>
+        <span class="badge">${esc(tplLabel)}</span>
+        ${p.enabled ? '' : '<span class="badge off">已禁用</span>'}
+        <span class="spacer"></span>
+        <button class="btn icon" title="上移" onclick="event.stopPropagation(); move(${i},-1)" ${i===0?'disabled':''}>↑</button>
+        <button class="btn icon" title="下移" onclick="event.stopPropagation(); move(${i},1)" ${i===providers.length-1?'disabled':''}>↓</button>
+        <button class="btn icon danger" title="删除" onclick="event.stopPropagation(); del(${i})">🗑</button>
+      </div>
+      <div class="card-body" style="display:${open ? 'block' : 'none'}">
+        <div class="row">
+          <div class="label">自定义名称</div>
+          <div class="field"><input type="text" value="${esc(p.name)}" onchange="set(${i},'name',this.value)"></div>
+        </div>
+        <div class="row">
+          <div class="label">启用</div>
+          <div class="field"><label class="switch"><input type="checkbox" ${p.enabled?'checked':''} onchange="set(${i},'enabled',this.checked)"><span class="sl"></span></label></div>
+        </div>
+        ${nativeRow}
+        ${astrRow}
+        ${moreSection}
+        <div class="row" style="margin-top:10px">
+          <div class="label"></div>
+          <div class="field">
+            <button class="btn" onclick="testEntry(${i})">🧪 测试此搜索源</button>
+            <span class="test-result" id="testRes${i}"></span>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggle(i) { expanded[i] = expanded[i] === false; render(); }
+function set(i, k, v) { providers[i][k] = v; }
+function move(i, d) {
+  const j = i + d;
+  if (j < 0 || j >= providers.length) return;
+  [providers[i], providers[j]] = [providers[j], providers[i]];
+  render();
+}
+function del(i) {
+  if (!confirm(`删除搜索源「${providers[i].name}」？`)) return;
+  providers.splice(i, 1); render();
+}
+
+async function testEntry(i) {
+  const el = document.getElementById('testRes' + i);
+  el.className = 'test-result'; el.innerText = '测试中…';
+  try {
+    const r = await reqApi('POST', 'test', { entry: providers[i], query: 'latest news' });
+    el.classList.add(r.success ? 'ok' : 'fail');
+    el.innerText = (r.success ? '✅ ' : '❌ ') + (r.detail || r.error || '');
+  } catch (e) {
+    el.classList.add('fail'); el.innerText = '❌ ' + e.message;
+  }
+}
+
+// ---------- 添加 / 保存 ----------
+document.getElementById('addBtn').onclick = (e) => {
+  e.stopPropagation();
+  const menu = document.getElementById('addMenu');
+  menu.innerHTML = Object.entries(TEMPLATES).map(([k, t]) =>
+    `<div class="opt" onclick="addEntry('${k}')"><b>${t.label}</b><div class="d">${t.desc}</div></div>`).join('');
+  menu.classList.toggle('open');
+};
+document.addEventListener('click', () => document.getElementById('addMenu').classList.remove('open'));
+
+function addEntry(key) {
+  const t = TEMPLATES[key];
+  providers.push({
+    __template_key: key, enabled: true, astr_provider_id: '',
+    api_keys: [], timeout: 60, max_results: 0, ...t.entry
+  });
+  expanded[providers.length - 1] = true;
+  document.getElementById('addMenu').classList.remove('open');
+  render();
+}
+
+document.getElementById('saveBtn').onclick = async () => {
+  try {
+    const r = await reqApi('POST', 'config/save', {
+      providers,
+      key_cooldown_seconds: parseInt(document.getElementById('gCooldown').value) || 300,
+      fetch_max_chars: parseInt(document.getElementById('gFetchMax').value) || 0,
+    });
+    toast(r.success ? '✅ 已保存' : ('保存失败: ' + (r.error || '')), !r.success);
+  } catch (e) { toast('保存失败: ' + e.message, true); }
+};
+
+// ---------- 初始化 ----------
+(async function init() {
+  await initBridge();
+  try {
+    const [cfg, aps, nat] = await Promise.all([
+      reqApi('GET', 'config'),
+      reqApi('GET', 'astr_providers'),
+      reqApi('GET', 'native_search').catch(() => null),
+    ]);
+    if (cfg.success) {
+      providers = cfg.providers || [];
+      providers.forEach((p, i) => expanded[i] = false);
+      document.getElementById('gCooldown').value = cfg.key_cooldown_seconds ?? 300;
+      document.getElementById('gFetchMax').value = cfg.fetch_max_chars ?? 0;
+    } else { toast('加载配置失败: ' + (cfg.error || ''), true); }
+    if (aps.success) astrProviders = aps.providers || [];
+    if (nat && nat.success) nativeInfo = nat;
+    render();
+  } catch (e) { toast('初始化失败: ' + e.message, true); render(); }
+})();
+</script>
+</body>
+</html>

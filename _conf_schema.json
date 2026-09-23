@@ -1,0 +1,405 @@
+{
+  "providers": {
+    "description": "🔎 搜索提供商列表（按顺序轮询回退）",
+    "type": "template_list",
+    "hint": "列表顺序即优先级：第一个失败后自动换下一个。每个提供商可填多个 API Key 轮询使用。base_url 全部可改为中转地址；用中转时记得把请求协议改成中转实际支持的格式。",
+    "templates": {
+      "gemini_search": {
+        "name": "Gemini 谷歌原生搜索",
+        "hint": "预设：Google 官方 generateContent + google_search grounding。走中转时请按中转支持的格式调整请求协议。",
+        "items": {
+          "name": {
+            "description": "自定义名称",
+            "type": "string",
+            "default": "gemini"
+          },
+          "enabled": {
+            "description": "启用",
+            "type": "bool",
+            "default": true
+          },
+          "astr_provider_id": {
+            "description": "从 AstrBot 已配置提供商选择（可选）",
+            "type": "string",
+            "default": "",
+            "_special": "select_provider",
+            "hint": "选择后自动继承该提供商的 API 地址、Key 列表和模型，下方 base_url / model / api_keys 将被忽略。若面板不支持下拉，可直接粘贴提供商 ID。"
+          },
+          "protocol": {
+            "description": "请求协议",
+            "type": "string",
+            "default": "auto",
+            "options": [
+              "auto",
+              "gemini_native",
+              "openai_responses",
+              "openai_chat_search",
+              "tavily"
+            ],
+            "hint": "auto=选择了 AstrBot 提供商时按其适配器类型自动推断，未选时按模板预设；其余选项为手动指定请求格式。gemini_native=Google generateContent; openai_responses=Responses API 的 web_search（多数中转用这种）; openai_chat_search=chat/completions + search_parameters（xAI 风格）; tavily=Tavily API"
+          },
+          "base_url": {
+            "description": "API 地址（可填中转）",
+            "type": "string",
+            "default": "https://generativelanguage.googleapis.com"
+          },
+          "model": {
+            "description": "模型",
+            "type": "string",
+            "default": "gemini-2.5-flash"
+          },
+          "api_keys": {
+            "description": "API Key 列表（可多个，轮询使用）",
+            "type": "list",
+            "default": []
+          },
+          "timeout": {
+            "description": "超时(秒)",
+            "type": "int",
+            "default": 60
+          },
+          "max_results": {
+            "description": "最大结果数",
+            "type": "int",
+            "default": 0,
+            "hint": "0 = 不限制"
+          }
+        }
+      },
+      "grok_search": {
+        "name": "Grok 原生搜索",
+        "hint": "预设：xAI chat/completions 的 search_parameters 实时搜索。",
+        "items": {
+          "name": {
+            "description": "自定义名称",
+            "type": "string",
+            "default": "grok"
+          },
+          "enabled": {
+            "description": "启用",
+            "type": "bool",
+            "default": true
+          },
+          "astr_provider_id": {
+            "description": "从 AstrBot 已配置提供商选择（可选）",
+            "type": "string",
+            "default": "",
+            "_special": "select_provider",
+            "hint": "选择后自动继承该提供商的 API 地址、Key 列表和模型，下方 base_url / model / api_keys 将被忽略。若面板不支持下拉，可直接粘贴提供商 ID。"
+          },
+          "protocol": {
+            "description": "请求协议",
+            "type": "string",
+            "default": "auto",
+            "options": [
+              "auto",
+              "openai_chat_search",
+              "openai_responses",
+              "gemini_native",
+              "tavily"
+            ],
+            "hint": "auto=选择了 AstrBot 提供商时按其适配器类型自动推断，未选时按模板预设；其余选项为手动指定请求格式。openai_chat_search=chat/completions + search_parameters（xAI 风格）; openai_responses=Responses API 的 web_search; gemini_native=Google generateContent; tavily=Tavily API"
+          },
+          "base_url": {
+            "description": "API 地址（可填中转，不含 /chat/completions）",
+            "type": "string",
+            "default": "https://api.x.ai/v1"
+          },
+          "model": {
+            "description": "模型",
+            "type": "string",
+            "default": "grok-4-fast"
+          },
+          "api_keys": {
+            "description": "API Key 列表（可多个，轮询使用）",
+            "type": "list",
+            "default": []
+          },
+          "timeout": {
+            "description": "超时(秒)",
+            "type": "int",
+            "default": 60
+          },
+          "max_results": {
+            "description": "最大结果数",
+            "type": "int",
+            "default": 0,
+            "hint": "0 = 不限制"
+          }
+        }
+      },
+      "openai_search": {
+        "name": "GPT 原生搜索（Responses API）",
+        "hint": "预设：OpenAI Responses API 的 web_search 内置工具。同样适用于把原生搜索包装成 Responses 格式的中转站。",
+        "items": {
+          "name": {
+            "description": "自定义名称",
+            "type": "string",
+            "default": "gpt"
+          },
+          "enabled": {
+            "description": "启用",
+            "type": "bool",
+            "default": true
+          },
+          "astr_provider_id": {
+            "description": "从 AstrBot 已配置提供商选择（可选）",
+            "type": "string",
+            "default": "",
+            "_special": "select_provider",
+            "hint": "选择后自动继承该提供商的 API 地址、Key 列表和模型，下方 base_url / model / api_keys 将被忽略。若面板不支持下拉，可直接粘贴提供商 ID。"
+          },
+          "protocol": {
+            "description": "请求协议",
+            "type": "string",
+            "default": "auto",
+            "options": [
+              "auto",
+              "openai_responses",
+              "openai_chat_search",
+              "gemini_native",
+              "tavily"
+            ],
+            "hint": "auto=选择了 AstrBot 提供商时按其适配器类型自动推断，未选时按模板预设；其余选项为手动指定请求格式。openai_responses=Responses API 的 web_search（多数中转用这种）; openai_chat_search=chat/completions + search_parameters（xAI 风格）; gemini_native=Google generateContent; tavily=Tavily API"
+          },
+          "base_url": {
+            "description": "API 地址（可填中转，不含 /responses）",
+            "type": "string",
+            "default": "https://api.openai.com/v1"
+          },
+          "model": {
+            "description": "模型",
+            "type": "string",
+            "default": "gpt-5-mini"
+          },
+          "api_keys": {
+            "description": "API Key 列表（可多个，轮询使用）",
+            "type": "list",
+            "default": []
+          },
+          "timeout": {
+            "description": "超时(秒)",
+            "type": "int",
+            "default": 60
+          },
+          "max_results": {
+            "description": "最大结果数",
+            "type": "int",
+            "default": 0,
+            "hint": "0 = 不限制"
+          }
+        }
+      },
+      "tavily_search": {
+        "name": "Tavily 搜索",
+        "hint": "预设：Tavily Search API。",
+        "items": {
+          "name": {
+            "description": "自定义名称",
+            "type": "string",
+            "default": "tavily"
+          },
+          "enabled": {
+            "description": "启用",
+            "type": "bool",
+            "default": true
+          },
+          "astr_provider_id": {
+            "description": "从 AstrBot 已配置提供商选择（可选）",
+            "type": "string",
+            "default": "",
+            "_special": "select_provider",
+            "hint": "选择后自动继承该提供商的 API 地址、Key 列表和模型，下方 base_url / model / api_keys 将被忽略。若面板不支持下拉，可直接粘贴提供商 ID。"
+          },
+          "protocol": {
+            "description": "请求协议",
+            "type": "string",
+            "default": "auto",
+            "options": [
+              "auto",
+              "tavily",
+              "openai_responses",
+              "openai_chat_search",
+              "gemini_native"
+            ],
+            "hint": "auto=选择了 AstrBot 提供商时按其适配器类型自动推断，未选时按模板预设；其余选项为手动指定请求格式。tavily=Tavily API; openai_responses=Responses API 的 web_search; openai_chat_search=chat/completions + search_parameters; gemini_native=Google generateContent"
+          },
+          "base_url": {
+            "description": "API 地址（可填中转，不含 /search）",
+            "type": "string",
+            "default": "https://api.tavily.com"
+          },
+          "model": {
+            "description": "模型（Tavily 无需模型，留空即可）",
+            "type": "string",
+            "default": ""
+          },
+          "api_keys": {
+            "description": "API Key 列表（可多个，轮询使用）",
+            "type": "list",
+            "default": []
+          },
+          "timeout": {
+            "description": "超时(秒)",
+            "type": "int",
+            "default": 60
+          },
+          "max_results": {
+            "description": "最大结果数",
+            "type": "int",
+            "default": 0,
+            "hint": "0 = 不限制"
+          }
+        }
+      },
+      "custom_search": {
+        "name": "自定义搜索引擎",
+        "hint": "完全自定义：自选协议、自填地址/模型/Key。",
+        "items": {
+          "name": {
+            "description": "自定义名称",
+            "type": "string",
+            "default": "custom"
+          },
+          "enabled": {
+            "description": "启用",
+            "type": "bool",
+            "default": true
+          },
+          "astr_provider_id": {
+            "description": "从 AstrBot 已配置提供商选择（可选）",
+            "type": "string",
+            "default": "",
+            "_special": "select_provider",
+            "hint": "选择后自动继承该提供商的 API 地址、Key 列表和模型，下方 base_url / model / api_keys 将被忽略。若面板不支持下拉，可直接粘贴提供商 ID。"
+          },
+          "protocol": {
+            "description": "请求协议",
+            "type": "string",
+            "default": "openai_responses",
+            "options": [
+              "auto",
+              "openai_responses",
+              "openai_chat_search",
+              "gemini_native",
+              "tavily"
+            ],
+            "hint": "auto=选择了 AstrBot 提供商时按其适配器类型自动推断；gemini_native=Google generateContent; openai_responses=Responses API 的 web_search（多数中转用这种）; openai_chat_search=chat/completions + search_parameters（xAI 风格）; tavily=Tavily API"
+          },
+          "base_url": {
+            "description": "API 地址",
+            "type": "string",
+            "default": ""
+          },
+          "model": {
+            "description": "模型",
+            "type": "string",
+            "default": ""
+          },
+          "api_keys": {
+            "description": "API Key 列表（可多个，轮询使用）",
+            "type": "list",
+            "default": []
+          },
+          "timeout": {
+            "description": "超时(秒)",
+            "type": "int",
+            "default": 60
+          },
+          "max_results": {
+            "description": "最大结果数",
+            "type": "int",
+            "default": 0,
+            "hint": "0 = 不限制"
+          }
+        }
+      },
+      "astrbot_search": {
+        "name": "AstrBot 已配置的提供商",
+        "hint": "直接使用 AstrBot 里已配置的模型提供商做搜索，地址/Key/模型全自动继承。",
+        "items": {
+          "name": {
+            "description": "自定义名称",
+            "type": "string",
+            "default": "astrbot"
+          },
+          "enabled": {
+            "description": "启用",
+            "type": "bool",
+            "default": true
+          },
+          "astr_provider_id": {
+            "description": "选择 AstrBot 提供商（必选）",
+            "type": "string",
+            "default": "",
+            "_special": "select_provider",
+            "hint": "选择后自动继承该提供商的 API 地址、Key 列表和模型，下方 base_url / model / api_keys 将被忽略。若面板不支持下拉，可直接粘贴提供商 ID。"
+          },
+          "protocol": {
+            "description": "请求协议",
+            "type": "string",
+            "default": "auto",
+            "options": [
+              "auto",
+              "openai_responses",
+              "openai_chat_search",
+              "gemini_native",
+              "tavily"
+            ],
+            "hint": "auto=选择了 AstrBot 提供商时按其适配器类型自动推断；gemini_native=Google generateContent; openai_responses=Responses API 的 web_search（多数中转用这种）; openai_chat_search=chat/completions + search_parameters（xAI 风格）; tavily=Tavily API"
+          },
+          "timeout": {
+            "description": "超时(秒)",
+            "type": "int",
+            "default": 60
+          },
+          "max_results": {
+            "description": "最大结果数",
+            "type": "int",
+            "default": 0,
+            "hint": "0 = 不限制"
+          }
+        }
+      },
+      "astrbot_native_search": {
+        "name": "AstrBot 原生网页搜索服务",
+        "hint": "直接使用 AstrBot 主配置（provider_settings）里的网页搜索服务和 Key，零配置。",
+        "items": {
+          "name": {
+            "description": "自定义名称",
+            "type": "string",
+            "default": "astrbot-native"
+          },
+          "enabled": {
+            "description": "启用",
+            "type": "bool",
+            "default": true
+          },
+          "timeout": {
+            "description": "超时(秒)",
+            "type": "int",
+            "default": 60
+          },
+          "max_results": {
+            "description": "最大结果数",
+            "type": "int",
+            "default": 0,
+            "hint": "0 = 不限制"
+          }
+        }
+      }
+    }
+  },
+  "key_cooldown_seconds": {
+    "description": "⏱️ Key 失败冷却时间（秒）",
+    "type": "int",
+    "default": 300,
+    "hint": "某个 Key 请求失败后，在该时间内暂时跳过它。"
+  },
+  "fetch_max_chars": {
+    "description": "📄 网页抓取最大字符数",
+    "type": "int",
+    "default": 0,
+    "hint": "fetch_web_page 工具返回正文的最大长度。0 = 不截断（默认）。注意：抓取超大网页会把大量内容塞进对话上下文。"
+  }
+}

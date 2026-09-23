@@ -1,0 +1,5 @@
+name: astrbot_plugin_websearch_hub
+display_name: 聚合搜索中心
+desc: 多搜索提供商轮询回退的统一搜索工具。预设 Gemini 谷歌原生搜索 / Grok / GPT(Responses) / Tavily，支持自定义名称、中转 URL、多 API Key 轮询与失败冷却。与当前对话模型无关，任何模型（含回退模型）均可使用。
+version: v1.1.0
+author: Mikachiyo
